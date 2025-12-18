@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SongFlow: Multi-Track Emotion Engine</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  
+  <style>
+    :root {
+      --bg: #02040a;
+      --panel: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.08);
+      --cyan: #00f2ff;
+      --purple: #7000ff;
+      --pink: #ff0055;
+      --text: #f0f4f8;
+      --dim: #64748b;
+      --intense: #ff3333;
+      --chill: #33ffcc;
+      --euphoric: #ffcc33;
+      --melancholy: #3366ff;
+    }
+
+    * { box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; }
+    
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(112, 0, 255, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(0, 242, 255, 0.1) 0%, transparent 40%);
+    }
+
+    header {
+      padding: 1.2rem 2.5rem; display: flex; justify-content: space-between; align-items: center;
+      background: rgba(0,0,0,0.7); border-bottom: 1px solid var(--border); backdrop-filter: blur(20px); z-index: 100;
+    }
+
+    .logo {
+      font-weight: 900; letter-spacing: 6px; text-transform: uppercase;
+      background: linear-gradient(90deg, var(--cyan), #fff, var(--purple));
+      background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      animation: shine 8s linear infinite;
+    }
+    @keyframes shine { to { background-position: 200% center; } }
+
+    .workspace { flex: 1; display: flex; gap: 1.5rem; padding: 1.5rem; overflow: hidden; }
+
+    .rail-view {
+      flex: 1; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 30px; padding: 2.5rem; overflow-y: auto;
+      box-shadow: inset 0 0 80px rgba(0,0,0,0.9); position: relative;
+    }
+
+    .track-grid { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; position: relative; z-index: 5; }
+
+    .card {
+      width: 260px; min-height: 200px; background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border); border-radius: 22px; padding: 1.5rem;
+      cursor: pointer; position: relative; transition: all 0.3s ease;
+      display: flex; flex-direction: column; gap: 12px; backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .card:hover { transform: translateY(-8px); background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.3); }
+    .card.active { border-color: var(--cyan); box-shadow: 0 0 40px rgba(0, 242, 255, 0.15); border-width: 2px; }
+
+    .linker { width: 40px; height: 4px; background: var(--border); border-radius: 2px; position: relative; overflow: hidden; margin: 0 -5px; }
+    .linker::after { content: ''; position: absolute; width: 40%; height: 100%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); animation: flow 1.5s infinite linear; }
+    @keyframes flow { from { left: -100%; } to { left: 200%; } }
+
+    .emoji-box { position: absolute; top: 15px; right: 15px; font-size: 28px; }
+    .emo-float { animation: floating 3s infinite ease-in-out; }
+    .emo-shake { animation: shaking 0.2s infinite alternate; }
+    .emo-spin { animation: spinning 4s infinite linear; }
+    @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes shaking { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+    @keyframes spinning { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .side-bar { width: 400px; display: flex; flex-direction: column; gap: 1.2rem; z-index: 10; }
+    .box { background: var(--panel); border: 1px solid var(--border); border-radius: 26px; padding: 1.8rem; backdrop-filter: blur(40px); }
+
+    label { font-size: 0.75rem; font-weight: 800; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px; }
+    input, select, textarea { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border); padding: 14px; color: #fff; border-radius: 12px; outline: none; transition: 0.3s; }
+    input:focus, select:focus { border-color: var(--cyan); box-shadow: 0 0 20px rgba(0, 242, 255, 0.2); }
+
+    .btn { background: var(--panel); color: #fff; border: 1px solid var(--border); padding: 14px; border-radius: 14px; cursor: pointer; font-weight: 700; transition: 0.3s; width: 100%; text-transform: uppercase; letter-spacing: 1px; }
+    .btn:hover { background: var(--cyan); color: #000; box-shadow: 0 0 20px var(--cyan); }
+    .btn-del { border-color: var(--pink); color: var(--pink); margin-top: 15px; }
+    .btn-del:hover { background: var(--pink); color: #fff; border-color: var(--pink); }
+
+    .spectral-wrap { height: 60px; width: 100%; margin-top: auto; overflow: hidden; position: relative; border-radius: 10px; background: rgba(0,0,0,0.2); }
+    .layer { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; fill: none; stroke-width: 2; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    .clip-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .clip-item { 
+        display: flex; align-items: center; justify-content: space-between; 
+        background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+    }
+    .clip-name { font-size: 0.7rem; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+    .mini-play-btn { background: var(--cyan); color: #000; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 10px; font-weight: 800; }
+    .clip-count-badge { position: absolute; bottom: 70px; right: 15px; background: var(--cyan); color: #000; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 20px; box-shadow: 0 0 10px var(--cyan); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">SongFlow Master // Multi-Track</div>
+    <div style="display:flex; gap: 15px;">
+      <button class="btn" style="width: auto; padding: 10px 20px;" onclick="exportData()">💾 JSON Export</button>
+      <button class="btn" style="width: auto; padding: 10px 20px;" onclick="document.getElementById('load-input').click()">📁 Load Project</button>
+      <input type="file" id="load-input" style="display: none;" accept=".json" onchange="loadData(event)">
+      <button class="btn" style="width: auto; padding: 10px 20px; background: var(--purple); border:none;" onclick="addSection('Chorus')">+ Chorus</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <div class="rail-view">
+      <div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+          <h2 style="margin:0; font-weight: 900; font-size: 2.2rem; letter-spacing: -1px;">Studio Timeline</h2>
+          <span id="stats" style="color: var(--cyan); font-weight: 800; text-transform: uppercase; font-size: 0.8rem;">Ready for arrangement...</span>
+        </div>
+      </div>
+      <div class="track-grid" id="track-grid"></div>
+    </div>
+
+    <div class="side-bar">
+      <div class="box" id="inspector" style="opacity: 0.3; pointer-events: none;">
+        <h3>Technical Inspector</h3>
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+          <div class="field-group"><label>Label</label><input type="text" id="ins-label"></div>
+          <div class="field-group"><label>Bars</label><input type="number" id="ins-bars"></div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="field-group">
+            <label>Emotion Engine</label>
+            <select id="ins-emotion">
+              <option value="neutral">😐 Neutral</option>
+              <option value="chill">😎 Chill / Lofi</option>
+              <option value="euphoric">🤩 Euphoric</option>
+              <option value="intense">😡 Intense</option>
+              <option value="dreamy">☁️ Dreamy</option>
+              <option value="rage">👺 Rage</option>
+              <option value="gloomy">😢 Gloomy</option>
+              <option value="chaotic">🌀 Chaotic</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Tempo Flow</label>
+            <select id="ins-tempo">
+              <option value="1x">1.0x Normal</option>
+              <option value="0.5x">0.5x Half</option>
+              <option value="2x">2.0x Double</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Spectral Energy</label>
+          <select id="ins-energy">
+            <option value="static">Linear / Static</option>
+            <option value="build">Build / Crescendo</option>
+            <option value="drop">Drop / Peak</option>
+            <option value="fade">Out-Fade / Dim</option>
+          </select>
+        </div>
+
+        <div class="field-group"><label>Instrumentation</label><input type="text" id="ins-texture"></div>
+
+        <div class="field-group" style="margin-top:20px; border-top: 1px solid var(--border); padding-top:15px;">
+            <label><i class="fas fa-layer-group"></i> Multi-Track Clips</label>
+            <input type="file" id="ins-audio-multi-upload" accept="audio/*" style="font-size:0.7rem; padding:10px;">
+            <div id="ins-clip-list" class="clip-list"></div>
+        </div>
+
+        <button class="btn btn-del" onclick="deleteSection()">Remove Element</button>
+      </div>
+
+      <div class="box">
+        <h3>Element Library</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button class="btn" onclick="addSection('Intro')">Intro</button>
+          <button class="btn" onclick="addSection('Verse')">Verse</button>
+          <button class="btn" onclick="addSection('Chorus')">Chorus</button>
+          <button class="btn" onclick="addSection('Bridge')">Bridge</button>
+          <button class="btn" onclick="addSection('Solo')">Solo</button>
+          <button class="btn" onclick="addSection('Outro')">Outro</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let arrangement = [];
+    let activeId = null;
+    let currentActiveAudio = null;
+
+    const emotions = {
+      neutral: { emoji: '😐', class: '' },
+      chill: { emoji: '😎', class: 'emo-float' },
+      euphoric: { emoji: '🤩', class: 'emo-float' },
+      intense: { emoji: '😡', class: 'emo-shake' },
+      dreamy: { emoji: '☁️', class: 'emo-float' },
+      rage: { emoji: '👺', class: 'emo-shake' },
+      gloomy: { emoji: '😢', class: '' },
+      chaotic: { emoji: '🌀', class: 'emo-spin' }
+    };
+
+    function addSection(type) {
+      const id = Math.random().toString(36).substr(2, 9);
+      arrangement.push({ id, type, label: type, bars: 16, tempo: "1x", texture: "Modern Full", energy: "static", emotion: "neutral", clips: [] });
+      refresh();
+      selectPart(id);
+    }
+
+    function selectPart(id) {
+      activeId = id;
+      const part = arrangement.find(p => p.id === id);
+      const inspector = document.getElementById('inspector');
+      inspector.style.opacity = "1";
+      inspector.style.pointerEvents = "all";
+      ['ins-label', 'ins-bars', 'ins-tempo', 'ins-energy', 'ins-texture', 'ins-emotion'].forEach(field => {
+        document.getElementById(field).value = part[field.split('-')[1]];
+      });
+      renderClipList(part);
+      refresh();
+    }
+
+    function renderClipList(part) {
+        const container = document.getElementById('ins-clip-list');
+        container.innerHTML = '';
+        (part.clips || []).forEach((clip, index) => {
+            const item = document.createElement('div');
+            item.className = 'clip-item';
+            item.innerHTML = `
+                <span class="clip-name">${clip.name}</span>
+                <button class="mini-play-btn" id="btn-clip-${index}">PLAY</button>
+            `;
+            const btn = item.querySelector(`#btn-clip-${index}`);
+            btn.onclick = () => toggleClip(clip, btn);
+            container.appendChild(item);
+        });
+    }
+
+    function toggleClip(clip, btn) {
+        if (currentActiveAudio && !currentActiveAudio.paused && currentActiveAudio.src === clip.src) {
+            currentActiveAudio.pause();
+            btn.innerText = 'PLAY';
+            btn.style.background = 'var(--cyan)';
+        } else {
+            if (currentActiveAudio) {
+                currentActiveAudio.pause();
+                document.querySelectorAll('.mini-play-btn').forEach(b => b.innerText = 'PLAY');
+            }
+            currentActiveAudio = new Audio(clip.src);
+            currentActiveAudio.play();
+            btn.innerText = 'PAUSE';
+            btn.style.background = 'var(--pink)';
+            currentActiveAudio.onended = () => { btn.innerText = 'PLAY'; btn.style.background = 'var(--cyan)'; };
+        }
+    }
+
+    document.getElementById('ins-audio-multi-upload').onchange = (e) => {
+        const file = e.target.files[0];
+        const p = arrangement.find(x => x.id === activeId);
+        if (file && p) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                p.clips.push({ name: file.name, src: event.target.result });
+                renderClipList(p);
+                refresh(true);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    function deleteSection() {
+      arrangement = arrangement.filter(p => p.id !== activeId);
+      activeId = null;
+      if(currentActiveAudio) currentActiveAudio.pause();
+      document.getElementById('inspector').style.opacity = "0.3";
+      refresh();
+    }
+
+    ['ins-label', 'ins-bars', 'ins-tempo', 'ins-energy', 'ins-texture', 'ins-emotion'].forEach(id => {
+      document.getElementById(id).oninput = () => {
+        const p = arrangement.find(x => x.id === activeId);
+        if(p) { p[id.split('-')[1]] = document.getElementById(id).value; refresh(true); }
+      }
+    });
+
+    function refresh(partial = false) {
+      const grid = document.getElementById('track-grid');
+      if(!partial) grid.innerHTML = '';
+      let totalBars = 0;
+
+      arrangement.forEach((p, index) => {
+        totalBars += parseInt(p.bars || 0);
+        if(index > 0 && !partial) {
+            const linker = document.createElement('div');
+            linker.className = 'linker';
+            grid.appendChild(linker);
+        }
+        let card = document.getElementById('card-' + p.id);
+        if(!card) {
+          card = document.createElement('div');
+          card.id = 'card-' + p.id;
+          card.onclick = () => selectPart(p.id);
+          grid.appendChild(card);
+          gsap.from(card, { opacity: 0, scale: 0.8, y: 30, duration: 0.5 });
+        }
+        const isActive = activeId === p.id;
+        const emo = emotions[p.emotion];
+        card.className = `card ${isActive ? 'active' : ''}`;
+        let b, m, h;
+        if(p.energy === 'build') { b="M0 55 L100 30"; m="M0 45 L100 20"; h="M0 35 L100 10"; }
+        else if(p.energy === 'drop') { b="M0 20 Q50 60 100 20"; m="M0 10 Q50 5 100 10"; h="M0 5 L20 45 L40 5 L60 45 L100 5"; }
+        else if(p.energy === 'fade') { b="M0 30 L100 55"; m="M0 20 L100 45"; h="M0 10 L100 35"; }
+        else { b="M0 45 Q50 40 100 45"; m="M0 30 Q50 35 100 30"; h="M0 15 Q50 10 100 15"; }
+
+        // SAFETY CHECK: Ensure clips exists before reading length
+        const clipCount = (p.clips && p.clips.length) ? p.clips.length : 0;
+
+        card.innerHTML = `
+          <div class="emoji-box ${emo.class}">${emo.emoji}</div>
+          <div class="card-head">${p.type}</div>
+          <div class="card-title">${p.label}</div>
+          <div style="font-size: 0.7rem; color: var(--dim); font-weight: 600;">${p.bars} BARS // ${p.tempo} // ${p.texture}</div>
+          ${clipCount > 0 ? `<div class="clip-count-badge">${clipCount} TRACKS</div>` : ''}
+          <div class="spectral-wrap"><svg viewBox="0 0 100 60" preserveAspectRatio="none" style="width:100%; height:100%;"><path class="layer" style="stroke: var(--pink); opacity: 0.4;" d="${b}" /><path class="layer" style="stroke: var(--cyan); opacity: 0.7;" d="${m}" /><path class="layer" style="stroke: #fff; opacity: 1;" d="${h}" /></svg></div>
+        `;
+      });
+      document.getElementById('stats').innerText = `${totalBars} Bars Arrangement Logic Ready`;
+    }
+
+    function exportData() {
+      // PRO TIP: Use a Blob to handle large audio data within the JSON string
+      const dataStr = JSON.stringify(arrangement);
+      const blob = new Blob([dataStr], {type: "application/json"});
+      const url = URL.createObjectURL(blob);
+      const dlAnchor = document.createElement('a');
+      dlAnchor.setAttribute("href", url);
+      dlAnchor.setAttribute("download", "master_arrangement.json");
+      dlAnchor.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function loadData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const loaded = JSON.parse(e.target.result);
+                if (Array.isArray(loaded)) {
+                    // Normalize data: ensure all parts have a clips array even if missing from old JSON
+                    arrangement = loaded.map(p => ({ ...p, clips: p.clips || [] }));
+                    activeId = null;
+                    document.getElementById('inspector').style.opacity = "0.3";
+                    refresh();
+                    if (arrangement.length > 0) selectPart(arrangement[0].id);
+                }
+            } catch (err) { alert("Invalid project file."); }
+        };
+        reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>

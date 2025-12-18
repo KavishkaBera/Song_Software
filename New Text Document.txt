@@ -1,0 +1,1640 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Song Structure Studio</title>
+  <style>
+    :root{
+      --bg0:#060814;
+      --bg1:#0a1030;
+      --card:rgba(255,255,255,.06);
+      --card2:rgba(255,255,255,.08);
+      --stroke:rgba(255,255,255,.14);
+      --stroke2:rgba(255,255,255,.22);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.65);
+      --muted2:rgba(255,255,255,.48);
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --r:18px;
+      --r2:24px;
+      --glow: 0 0 25px rgba(120,110,255,.22);
+      --accent:#7a6cff;
+      --accent2:#22d3ee;
+      --danger:#ff4d6d;
+      --ok:#2ee59d;
+    }
+
+    *{box-sizing:border-box;}
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background: radial-gradient(1200px 900px at 10% 10%, rgba(122,108,255,.22), transparent 55%),
+                  radial-gradient(900px 600px at 85% 30%, rgba(34,211,238,.20), transparent 55%),
+                  radial-gradient(900px 700px at 55% 90%, rgba(46,229,157,.12), transparent 55%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow:hidden;
+    }
+
+    /* Subtle animated grain */
+    .grain{
+      pointer-events:none;
+      position:fixed; inset:-40px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E");
+      opacity:.22;
+      mix-blend-mode:overlay;
+      animation: drift 10s linear infinite;
+    }
+    @keyframes drift{ from{transform:translate3d(0,0,0);} to{transform:translate3d(-40px,30px,0);} }
+
+    .app{
+      height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Top bar */
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 18px;
+      gap:12px;
+    }
+
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      border:1px solid var(--stroke);
+      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+      border-radius:999px;
+      box-shadow: var(--glow);
+    }
+    .logo{
+      width:28px; height:28px; border-radius:10px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.55), rgba(255,255,255,0) 45%),
+                  linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 10px 30px rgba(122,108,255,.25);
+    }
+    .brand h1{font-size:14px; margin:0; letter-spacing:.4px;}
+    .brand span{display:block; font-size:11px; color:var(--muted2); margin-top:2px;}
+
+    .actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;}
+
+    .btn{
+      user-select:none;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      color:var(--text);
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+      font-size:12px;
+      letter-spacing:.2px;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: var(--stroke2); background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05)); }
+    .btn:active{ transform: translateY(0px) scale(.99); }
+    .btn.primary{ border-color: rgba(122,108,255,.45); background: linear-gradient(180deg, rgba(122,108,255,.35), rgba(122,108,255,.10)); }
+    .btn.danger{ border-color: rgba(255,77,109,.45); background: linear-gradient(180deg, rgba(255,77,109,.28), rgba(255,77,109,.10)); }
+    .btn.ghost{ background: transparent; box-shadow:none; }
+
+    .kbd{font-size:10px;color:var(--muted2);border:1px solid var(--stroke);padding:2px 6px;border-radius:8px;}
+
+    /* Layout */
+    .main{
+      display:grid;
+      grid-template-columns: 360px 1fr 420px;
+      gap:14px;
+      padding:0 14px 14px 14px;
+      height: calc(100vh - 72px);
+    }
+
+    .panel{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      border-radius: var(--r2);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
+
+    .panelHeader{
+      padding:14px 14px 10px 14px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+
+    .panelHeader h2{ margin:0; font-size:13px; letter-spacing:.3px; }
+    .panelHeader p{ margin:6px 0 0; font-size:11px; color:var(--muted2); line-height:1.25; }
+
+    .panelBody{ padding:14px; overflow:auto; min-height:0; }
+
+    /* Left panel list */
+    .songMetaGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    label{ font-size:11px; color:var(--muted2); }
+    input, select, textarea{
+      width:100%;
+      padding:10px 10px;
+      border-radius:14px;
+      border:1px solid var(--stroke);
+      background: rgba(10,12,25,.55);
+      color:var(--text);
+      outline:none;
+      transition: border-color .12s ease;
+      font-size:12px;
+    }
+    textarea{ min-height:88px; resize:vertical; }
+    input:focus, select:focus, textarea:focus{ border-color: rgba(122,108,255,.55); box-shadow: 0 0 0 3px rgba(122,108,255,.12); }
+
+    .pillRow{ display:flex; flex-wrap:wrap; gap:8px; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      font-size:11px;
+      color:var(--muted);
+    }
+    .pill strong{ color:var(--text); font-weight:600; }
+
+    .sectionList{ display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+    .sectionItem{
+      display:flex; gap:10px; align-items:center;
+      padding:10px 10px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      cursor:pointer;
+      transition: transform .10s ease, border-color .12s ease, background .12s ease;
+    }
+    .sectionItem:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.18); background: rgba(0,0,0,.18); }
+    .sectionItem.active{ border-color: rgba(122,108,255,.55); box-shadow: 0 0 0 3px rgba(122,108,255,.12); }
+
+    .typeDot{
+      width:12px;height:12px;border-radius:999px;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+      flex:0 0 12px;
+    }
+    .sectionInfo{ flex:1; min-width:0; }
+    .sectionInfo .top{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .sectionInfo .name{ font-size:12px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sectionInfo .meta{ font-size:11px; color:var(--muted2); margin-top:4px; display:flex; gap:8px; flex-wrap:wrap; }
+    .dragHint{ font-size:10px; color:var(--muted2); border:1px dashed rgba(255,255,255,.18); padding:4px 8px; border-radius:999px; }
+
+    .miniBtns{ display:flex; gap:8px; }
+    .iconBtn{
+      width:32px; height:32px;
+      border-radius:12px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .iconBtn:hover{ transform: translateY(-1px); border-color: var(--stroke2); background: rgba(255,255,255,.08); }
+    .iconBtn:active{ transform: translateY(0px) scale(.99); }
+
+    /* Center timeline */
+    .timelineWrap{ padding:14px; overflow:hidden; }
+
+    .timelineCard{
+      border:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(0,0,0,.16), rgba(0,0,0,.10));
+      border-radius: 22px;
+      padding:14px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    }
+
+    .timelineTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .songTitle{
+      display:flex; flex-direction:column; gap:3px;
+      min-width:0;
+    }
+    .songTitle strong{ font-size:14px; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .songTitle span{ font-size:11px; color:var(--muted2); }
+
+    .viewToggles{ display:flex; gap:8px; align-items:center; }
+
+    .seg{
+      display:inline-flex;
+      padding:3px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      gap:3px;
+    }
+    .seg button{
+      border:0;
+      border-radius:999px;
+      padding:8px 10px;
+      background: transparent;
+      color: var(--muted);
+      cursor:pointer;
+      font-size:11px;
+    }
+    .seg button.active{ background: rgba(122,108,255,.30); color: var(--text); }
+
+    .timeline{
+      position:relative;
+      height:86px;
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.10);
+      background: radial-gradient(600px 90px at 20% 40%, rgba(122,108,255,.16), transparent 60%),
+                  radial-gradient(420px 80px at 80% 60%, rgba(34,211,238,.12), transparent 60%),
+                  rgba(0,0,0,.18);
+      overflow:hidden;
+    }
+
+    .timelineGrid{
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 64px 100%;
+      opacity:.45;
+      pointer-events:none;
+    }
+
+    .blocks{
+      position:absolute; inset:10px;
+      display:flex;
+      gap:10px;
+      align-items:stretch;
+    }
+
+    .block{
+      position:relative;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow: 0 14px 45px rgba(0,0,0,.35);
+      overflow:hidden;
+      cursor:pointer;
+      min-width: 64px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      transition: transform .10s ease, border-color .12s ease;
+    }
+    .block:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.20); }
+    .block.active{ border-color: rgba(122,108,255,.60); box-shadow: 0 0 0 3px rgba(122,108,255,.12), 0 14px 45px rgba(0,0,0,.40); }
+
+    .blockInner{ padding:10px 10px 8px 10px; }
+    .blockTop{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+
+    .blockName{ font-size:11px; font-weight:700; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .blockMeta{ font-size:10px; color:rgba(255,255,255,.72); display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.16);
+    }
+
+    .spark{
+      width:20px; height:20px;
+      border-radius: 10px;
+      display:grid;
+      place-items:center;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.14);
+      font-size:12px;
+      opacity:.95;
+    }
+
+    .energyBar{
+      height:10px;
+      border-top:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      position:relative;
+    }
+    .energyFill{
+      position:absolute; left:0; top:0; bottom:0;
+      background: linear-gradient(90deg, rgba(34,211,238,.75), rgba(122,108,255,.85), rgba(46,229,157,.75));
+      width:50%;
+      filter: saturate(1.1);
+      opacity:.9;
+    }
+
+    .resizeHandle{
+      position:absolute; top:0; right:0; bottom:0;
+      width:12px;
+      cursor: ew-resize;
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,.25));
+    }
+    .resizeHandle::after{
+      content:"";
+      position:absolute; top:50%; right:3px;
+      width:3px; height:22px;
+      transform: translateY(-50%);
+      border-radius:99px;
+      background: rgba(255,255,255,.45);
+      box-shadow: 0 0 0 2px rgba(0,0,0,.25);
+      opacity:.75;
+    }
+
+    .miniMap{
+      margin-top:10px;
+      height:16px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      overflow:hidden;
+      display:flex;
+      gap:2px;
+      padding:2px;
+    }
+    .miniSeg{ border-radius:999px; flex:1; opacity:.9; }
+
+    .arc{
+      margin-top:12px;
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      padding:12px;
+    }
+    .arcTitle{ font-size:11px; color:var(--muted2); display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .arcCanvas{ width:100%; height:66px; display:block; }
+
+    /* Inspector */
+    .twoCol{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+
+    .dangerZone{
+      margin-top:12px;
+      padding:12px;
+      border-radius: 18px;
+      border:1px solid rgba(255,77,109,.28);
+      background: rgba(255,77,109,.08);
+    }
+    .dangerZone .row{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .dangerZone p{ margin:8px 0 0; font-size:11px; color:rgba(255,255,255,.68); line-height:1.35; }
+
+    .footerHint{
+      position:fixed;
+      left:18px;
+      bottom:16px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      color:var(--muted2);
+      font-size:11px;
+      pointer-events:none;
+      opacity:.9;
+    }
+
+    .toast{
+      position:fixed;
+      right:18px;
+      bottom:16px;
+      padding:10px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(10,12,25,.70);
+      box-shadow: var(--shadow);
+      color:var(--text);
+      font-size:12px;
+      opacity:0;
+      transform: translateY(10px);
+      transition: opacity .18s ease, transform .18s ease;
+      max-width: 360px;
+    }
+    .toast.show{ opacity:1; transform: translateY(0); }
+
+    /* Responsive */
+    @media (max-width: 1200px){
+      body{ overflow:auto; }
+      .main{ grid-template-columns: 1fr; height:auto; }
+      .panel{ min-height: 420px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grain"></div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="brand" title="Song Structure Studio">
+        <div class="logo"></div>
+        <div>
+          <h1>Song Structure Studio</h1>
+          <span>structure • key changes • sections • export</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="addSectionBtn">➕ Add section <span class="kbd">A</span></button>
+        <button class="btn" id="duplicateBtn" title="Duplicate selected section">⎘ Duplicate</button>
+        <button class="btn" id="exportPngBtn" title="Export timeline to PNG">⬇ Export PNG</button>
+        <button class="btn" id="exportJsonBtn" title="Export project JSON">{} Export JSON</button>
+        <button class="btn" id="printBtn" title="Print clean producer sheet">🖨 Print</button>
+        <button class="btn ghost" id="helpBtn" title="Shortcuts">❔</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <!-- LEFT: Song + sections list -->
+      <section class="panel" id="leftPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Song settings</h2>
+            <p>Global facts your producer cares about (title, BPM, key), plus section list.</p>
+          </div>
+          <div class="pill"><strong id="totalBars">0</strong> total bars</div>
+        </div>
+        <div class="panelBody">
+          <div class="songMetaGrid">
+            <div class="field">
+              <label>Song title</label>
+              <input id="songTitleInput" placeholder="e.g., Berahanda" />
+            </div>
+            <div class="field">
+              <label>Artist</label>
+              <input id="artistInput" placeholder="e.g., Kavishka" />
+            </div>
+            <div class="field">
+              <label>BPM</label>
+              <input id="bpmInput" type="number" min="40" max="240" step="1" />
+            </div>
+            <div class="field">
+              <label>Time signature</label>
+              <select id="timeSigInput">
+                <option>4/4</option>
+                <option>3/4</option>
+                <option>6/8</option>
+                <option>2/4</option>
+                <option>5/4</option>
+                <option>7/8</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Starting key</label>
+              <input id="songKeyInput" placeholder="e.g., F# minor" />
+            </div>
+            <div class="field">
+              <label>Primary genre</label>
+              <input id="songGenreInput" placeholder="e.g., Pop / Hip-hop" />
+            </div>
+          </div>
+
+          <div style="margin-top:12px" class="pillRow" id="quickStats"></div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:16px; gap:10px;">
+            <div>
+              <div style="font-size:12px; font-weight:700; letter-spacing:.2px;">Sections</div>
+              <div style="font-size:11px; color:var(--muted2); margin-top:4px;">Drag to reorder. Click to edit.</div>
+            </div>
+            <span class="dragHint">Drag</span>
+          </div>
+
+          <div class="sectionList" id="sectionList"></div>
+        </div>
+      </section>
+
+      <!-- CENTER: Timeline -->
+      <section class="panel" id="centerPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Timeline</h2>
+            <p>One line structure that shows flow, energy, and key changes.</p>
+          </div>
+          <div class="pill"><strong id="totalTime">0:00</strong> approx</div>
+        </div>
+
+        <div class="panelBody timelineWrap">
+          <div class="timelineCard">
+            <div class="timelineTop">
+              <div class="songTitle">
+                <strong id="songTitleLabel">Untitled</strong>
+                <span id="songSubLabel">—</span>
+              </div>
+
+              <div class="viewToggles">
+                <div class="seg" title="Width mode">
+                  <button id="modeBarsBtn" class="active">Bars</button>
+                  <button id="modeTimeBtn">Time</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="timeline" id="timeline">
+              <div class="timelineGrid"></div>
+              <div class="blocks" id="blocks"></div>
+            </div>
+
+            <div class="miniMap" id="miniMap"></div>
+
+            <div class="arc">
+              <div class="arcTitle">
+                <span>Energy arc (0–10)</span>
+                <span style="color:var(--muted2)">helps plan climax & ending</span>
+              </div>
+              <canvas class="arcCanvas" id="arcCanvas" width="1000" height="180"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Inspector -->
+      <section class="panel" id="rightPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Section details</h2>
+            <p>All the advanced structure notes (chorus, climax, genre bending, key changes).</p>
+          </div>
+          <div class="miniBtns">
+            <button class="iconBtn" id="copyLinkBtn" title="Copy share-link (URL hash)">🔗</button>
+            <button class="iconBtn" id="resetBtn" title="Reset to demo project">↺</button>
+          </div>
+        </div>
+        <div class="panelBody">
+          <div class="pill" style="margin-bottom:12px; justify-content:space-between;">
+            <span>Selected:</span>
+            <strong id="selectedLabel">—</strong>
+          </div>
+
+          <div class="twoCol">
+            <div class="field">
+              <label>Section name</label>
+              <input id="secName" placeholder="e.g., Chorus" />
+            </div>
+            <div class="field">
+              <label>Section type</label>
+              <select id="secType"></select>
+            </div>
+          </div>
+
+          <div class="twoCol" style="margin-top:10px;">
+            <div class="field">
+              <label>Length (bars)</label>
+              <input id="secBars" type="number" min="1" max="256" step="1" />
+            </div>
+            <div class="field">
+              <label>Energy (0–10)</label>
+              <input id="secEnergy" type="number" min="0" max="10" step="1" />
+            </div>
+          </div>
+
+          <div class="twoCol" style="margin-top:10px;">
+            <div class="field">
+              <label>Key (for this part)</label>
+              <input id="secKey" placeholder="e.g., A minor" />
+            </div>
+            <div class="field">
+              <label>Key change note</label>
+              <input id="secKeyChange" placeholder="e.g., +2 semitone lift" />
+            </div>
+          </div>
+
+          <div style="margin-top:10px" class="field">
+            <label>Genre blend / vibe tags (comma separated)</label>
+            <input id="secGenres" placeholder="e.g., hip-hop, pop, EDM lift" />
+          </div>
+
+          <div style="margin-top:10px" class="twoCol">
+            <div class="field">
+              <label>Hook / concept</label>
+              <input id="secHook" placeholder="e.g., main melody hook + chant" />
+            </div>
+            <div class="field">
+              <label>Transition into next</label>
+              <input id="secTransition" placeholder="e.g., riser → drop" />
+            </div>
+          </div>
+
+          <div style="margin-top:10px" class="field">
+            <label>Arrangement / production notes</label>
+            <textarea id="secNotes" placeholder="e.g., Verse: kick + 808 + tight hats. Pre: open hat + snare roll. Chorus: wide synth + stacked vocals…"></textarea>
+          </div>
+
+          <div style="margin-top:10px" class="twoCol">
+            <div class="field">
+              <label>Reference track</label>
+              <input id="secRef" placeholder="optional" />
+            </div>
+            <div class="field">
+              <label>Lyrics cue / story beat</label>
+              <input id="secLyric" placeholder="optional" />
+            </div>
+          </div>
+
+          <div class="dangerZone">
+            <div class="row">
+              <div style="font-weight:700; font-size:12px;">Danger zone</div>
+              <button class="btn danger" id="deleteBtn">🗑 Delete section</button>
+            </div>
+            <p>Deleting removes this section from the timeline. (Undo is not implemented yet — export JSON if you want backups.)</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="footerHint">
+      <span>Shortcuts:</span>
+      <span class="kbd">A</span> add section
+      <span class="kbd">Del</span> delete selected
+      <span class="kbd">Ctrl/⌘ S</span> export JSON
+      <span class="kbd">Ctrl/⌘ P</span> print
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+<script>
+  // -----------------------------
+  // Song Structure Studio
+  // Single-file, offline-friendly
+  // -----------------------------
+
+  const STORAGE_KEY = "sss_project_v1";
+
+  const TYPE_STYLES = {
+    "Intro":        { color:"#7a6cff", icon:"⟡" },
+    "Verse":        { color:"#22d3ee", icon:"⌁" },
+    "Pre-Chorus":   { color:"#8b5cf6", icon:"↗" },
+    "Chorus":       { color:"#2ee59d", icon:"★" },
+    "Post-Chorus":  { color:"#60a5fa", icon:"➤" },
+    "Bridge":       { color:"#f59e0b", icon:"⎔" },
+    "Breakdown":    { color:"#fb7185", icon:"⬒" },
+    "Climax":       { color:"#f97316", icon:"⚡" },
+    "Outro":        { color:"#a3a3a3", icon:"⟟" },
+    "Drop":         { color:"#34d399", icon:"⬇" },
+    "Build":        { color:"#a78bfa", icon:"⬆" },
+    "Interlude":    { color:"#93c5fd", icon:"…" },
+    "Custom":       { color:"#e879f9", icon:"✦" },
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  function uid(){
+    if (crypto?.randomUUID) return crypto.randomUUID();
+    return "id_" + Math.random().toString(16).slice(2) + "_" + Date.now();
+  }
+
+  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+  function parseTags(str){
+    return (str || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+  }
+
+  function fmtTime(seconds){
+    const s = Math.max(0, Math.round(seconds));
+    const m = Math.floor(s/60);
+    const r = s % 60;
+    return `${m}:${String(r).padStart(2,"0")}`;
+  }
+
+  function estimateSecondsFromBars(bars, bpm, timeSig){
+    // assumes bars based on timeSig numerator (beats per bar) and quarter-note beat
+    const beatsPerBar = Number((timeSig || "4/4").split("/")[0]) || 4;
+    const beats = bars * beatsPerBar;
+    const minutes = beats / Math.max(1, bpm);
+    return minutes * 60;
+  }
+
+  function toast(msg){
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toast._tm);
+    toast._tm = setTimeout(() => t.classList.remove("show"), 1600);
+  }
+
+  function defaultProject(){
+    return {
+      song: {
+        title: "Untitled",
+        artist: "",
+        bpm: 92,
+        timeSig: "4/4",
+        key: "",
+        genre: "",
+        widthMode: "bars", // bars | time
+      },
+      sections: [
+        { id: uid(), name:"Intro", type:"Intro", bars:8, energy:3, key:"", keyChange:"", genres:["atmos"], hook:"", transition:"", notes:"", ref:"", lyric:"" },
+        { id: uid(), name:"Verse 1", type:"Verse", bars:16, energy:4, key:"", keyChange:"", genres:["hip-hop"], hook:"story setup", transition:"lift", notes:"", ref:"", lyric:"" },
+        { id: uid(), name:"Pre", type:"Pre-Chorus", bars:8, energy:6, key:"", keyChange:"", genres:["tension"], hook:"pre-hook", transition:"riser", notes:"", ref:"", lyric:"" },
+        { id: uid(), name:"Chorus", type:"Chorus", bars:16, energy:8, key:"", keyChange:"", genres:["pop"], hook:"main hook", transition:"impact", notes:"", ref:"", lyric:"" },
+        { id: uid(), name:"Verse 2", type:"Verse", bars:16, energy:5, key:"", keyChange:"", genres:["variation"], hook:"new angle", transition:"lift", notes:"", ref:"", lyric:"" },
+        { id: uid(), name:"Chorus 2", type:"Chorus", bars:16, energy:9, key:"", keyChange:"", genres:["bigger"], hook:"stacked vocals", transition:"fill", notes:"", ref:"", lyric:"" },
+        { id: uid(), name:"Bridge", type:"Bridge", bars:8, energy:6, key:"", keyChange:"", genres:["switch"], hook:"contrast", transition:"build", notes:"", ref:"", lyric:"" },
+        { id: uid(), name:"Final Chorus", type:"Climax", bars:16, energy:10, key:"", keyChange:"", genres:["climax"], hook:"lift", transition:"tail", notes:"", ref:"", lyric:"" },
+        { id: uid(), name:"Outro", type:"Outro", bars:8, energy:4, key:"", keyChange:"", genres:["fade"], hook:"", transition:"end", notes:"", ref:"", lyric:"" },
+      ]
+    };
+  }
+
+  function loadProject(){
+    // 1) try URL hash share-link
+    const hash = location.hash?.startsWith("#sss=") ? location.hash.slice(5) : "";
+    if (hash){
+      try{
+        const json = decodeURIComponent(escape(atob(hash)));
+        const proj = JSON.parse(json);
+        if (proj?.song?.title && Array.isArray(proj.sections)) return sanitizeProject(proj);
+      }catch(e){ /* ignore */ }
+    }
+
+    // 2) localStorage
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw){
+        const proj = JSON.parse(raw);
+        if (proj?.song?.title && Array.isArray(proj.sections)) return sanitizeProject(proj);
+      }
+    }catch(e){ /* ignore */ }
+
+    return defaultProject();
+  }
+
+  function sanitizeProject(p){
+    const proj = {
+      song: {
+        title: String(p.song?.title || "Untitled").slice(0, 80),
+        artist: String(p.song?.artist || "").slice(0, 80),
+        bpm: clamp(Number(p.song?.bpm ?? 92), 40, 240),
+        timeSig: String(p.song?.timeSig || "4/4"),
+        key: String(p.song?.key || "").slice(0, 40),
+        genre: String(p.song?.genre || "").slice(0, 50),
+        widthMode: (p.song?.widthMode === "time") ? "time" : "bars",
+      },
+      sections: (p.sections || []).map(s => ({
+        id: String(s.id || uid()),
+        name: String(s.name || "Section").slice(0, 60),
+        type: TYPE_STYLES[String(s.type)] ? String(s.type) : "Custom",
+        bars: clamp(Number(s.bars ?? 8), 1, 256),
+        energy: clamp(Number(s.energy ?? 5), 0, 10),
+        key: String(s.key || "").slice(0, 40),
+        keyChange: String(s.keyChange || "").slice(0, 60),
+        genres: Array.isArray(s.genres) ? s.genres.map(x => String(x).slice(0, 18)).slice(0, 8) : parseTags(s.genres),
+        hook: String(s.hook || "").slice(0, 80),
+        transition: String(s.transition || "").slice(0, 80),
+        notes: String(s.notes || "").slice(0, 1200),
+        ref: String(s.ref || "").slice(0, 80),
+        lyric: String(s.lyric || "").slice(0, 120),
+      }))
+    };
+    if (proj.sections.length === 0) proj.sections = defaultProject().sections;
+    return proj;
+  }
+
+  let project = loadProject();
+  let selectedId = project.sections[0]?.id || null;
+
+  // Drag reorder state
+  let dragId = null;
+  // Resize state
+  let resizing = null; // {id, startX, startBars}
+
+  // -----------------------------
+  // DOM refs
+  // -----------------------------
+  const secTypeSel = $("secType");
+  const sectionList = $("sectionList");
+  const blocks = $("blocks");
+  const miniMap = $("miniMap");
+  const arcCanvas = $("arcCanvas");
+
+  // Populate type select
+  for (const k of Object.keys(TYPE_STYLES)){
+    const opt = document.createElement("option");
+    opt.value = k; opt.textContent = k;
+    secTypeSel.appendChild(opt);
+  }
+
+  // -----------------------------
+  // Save
+  // -----------------------------
+  function save(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(project)); }catch(e){ /* ignore */ }
+  }
+
+  // -----------------------------
+  // Render
+  // -----------------------------
+  function totalBars(){
+    return project.sections.reduce((a,s)=>a + (Number(s.bars)||0), 0);
+  }
+
+  function totalSeconds(){
+    const bars = totalBars();
+    return estimateSecondsFromBars(bars, project.song.bpm, project.song.timeSig);
+  }
+
+  function getSelected(){
+    return project.sections.find(s => s.id === selectedId) || null;
+  }
+
+  function isKeyChange(i){
+    if (i <= 0) return false;
+    const prev = project.sections[i-1]?.key?.trim();
+    const cur = project.sections[i]?.key?.trim();
+    if (!cur) return false;
+    if (!prev) return !!cur;
+    return prev.toLowerCase() !== cur.toLowerCase();
+  }
+
+  function sectionTypeColor(type){
+    return TYPE_STYLES[type]?.color || TYPE_STYLES.Custom.color;
+  }
+
+  function sectionTypeIcon(type){
+    return TYPE_STYLES[type]?.icon || TYPE_STYLES.Custom.icon;
+  }
+
+  function render(){
+    // Top labels
+    $("songTitleLabel").textContent = project.song.title || "Untitled";
+    const sub = [
+      project.song.artist ? `by ${project.song.artist}` : "",
+      `${project.song.bpm} BPM`,
+      project.song.timeSig,
+      project.song.key ? `Start key: ${project.song.key}` : "",
+      project.song.genre ? `Genre: ${project.song.genre}` : "",
+    ].filter(Boolean).join(" • ");
+    $("songSubLabel").textContent = sub || "—";
+
+    // Left meta inputs
+    $("songTitleInput").value = project.song.title;
+    $("artistInput").value = project.song.artist;
+    $("bpmInput").value = project.song.bpm;
+    $("timeSigInput").value = project.song.timeSig;
+    $("songKeyInput").value = project.song.key;
+    $("songGenreInput").value = project.song.genre;
+
+    // Stats
+    const tb = totalBars();
+    $("totalBars").textContent = tb;
+    const ts = totalSeconds();
+    $("totalTime").textContent = fmtTime(ts);
+
+    const beatsPerBar = Number(project.song.timeSig.split("/")[0]) || 4;
+    const totalBeats = tb * beatsPerBar;
+
+    const avgEnergy = (project.sections.reduce((a,s)=>a+s.energy,0) / Math.max(1, project.sections.length)).toFixed(1);
+    const keyChanges = project.sections.reduce((a,_,i)=> a + (isKeyChange(i)?1:0), 0);
+
+    const q = $("quickStats");
+    q.innerHTML = "";
+    q.appendChild(pill(`Total beats`, totalBeats));
+    q.appendChild(pill(`Avg energy`, avgEnergy));
+    q.appendChild(pill(`Key changes`, keyChanges));
+    q.appendChild(pill(`Sections`, project.sections.length));
+
+    // Sections list
+    sectionList.innerHTML = "";
+    project.sections.forEach((s, idx) => {
+      const row = document.createElement("div");
+      row.className = "sectionItem" + (s.id === selectedId ? " active" : "");
+      row.draggable = true;
+      row.dataset.id = s.id;
+
+      const dot = document.createElement("div");
+      dot.className = "typeDot";
+      dot.style.background = sectionTypeColor(s.type);
+
+      const info = document.createElement("div");
+      info.className = "sectionInfo";
+
+      const top = document.createElement("div");
+      top.className = "top";
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = `${idx+1}. ${s.name}`;
+
+      const badge = document.createElement("div");
+      badge.className = "pill";
+      badge.style.padding = "6px 9px";
+      badge.innerHTML = `<strong>${s.bars}</strong> bars`;
+
+      top.appendChild(name);
+      top.appendChild(badge);
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = `${s.type} • energy ${s.energy}` + (s.key ? ` • key ${s.key}` : "");
+
+      info.appendChild(top);
+      info.appendChild(meta);
+
+      row.appendChild(dot);
+      row.appendChild(info);
+
+      row.addEventListener("click", () => { selectedId = s.id; render(); });
+
+      // Drag events
+      row.addEventListener("dragstart", (e) => {
+        dragId = s.id;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", s.id);
+      });
+      row.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      });
+      row.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const fromId = e.dataTransfer.getData("text/plain") || dragId;
+        if (!fromId || fromId === s.id) return;
+        reorder(fromId, s.id);
+      });
+
+      sectionList.appendChild(row);
+    });
+
+    // Timeline blocks
+    blocks.innerHTML = "";
+    const mode = project.song.widthMode;
+    const denomSecondsPerBar = estimateSecondsFromBars(1, project.song.bpm, project.song.timeSig);
+
+    let totalForWidth = (mode === "time")
+      ? project.sections.reduce((a,s)=>a + s.bars*denomSecondsPerBar, 0)
+      : tb;
+
+    totalForWidth = Math.max(1, totalForWidth);
+
+    project.sections.forEach((s, idx) => {
+      const w = (mode === "time")
+        ? (s.bars*denomSecondsPerBar) / totalForWidth
+        : s.bars / totalForWidth;
+
+      const block = document.createElement("div");
+      block.className = "block" + (s.id === selectedId ? " active" : "");
+      block.dataset.id = s.id;
+      block.style.flex = `${w} 1 0`;
+
+      const base = sectionTypeColor(s.type);
+      block.style.background = `radial-gradient(220px 90px at 20% 30%, rgba(255,255,255,.25), transparent 55%), linear-gradient(135deg, ${hexToRgba(base,.85)}, ${hexToRgba(base,.28)})`;
+
+      const inner = document.createElement("div");
+      inner.className = "blockInner";
+
+      const top = document.createElement("div");
+      top.className = "blockTop";
+
+      const name = document.createElement("div");
+      name.className = "blockName";
+      name.textContent = s.name;
+
+      const spark = document.createElement("div");
+      spark.className = "spark";
+      const kc = isKeyChange(idx);
+      spark.textContent = kc ? "⚡" : sectionTypeIcon(s.type);
+      spark.title = kc ? "Key change" : s.type;
+
+      top.appendChild(name);
+      top.appendChild(spark);
+
+      const meta = document.createElement("div");
+      meta.className = "blockMeta";
+
+      const chips = [];
+      chips.push(chip(`${s.bars} bars`));
+      if (s.key) chips.push(chip(`Key: ${s.key}`));
+      if (s.genres?.length) chips.push(chip(s.genres[0]));
+      if (kc && s.keyChange) chips.push(chip(s.keyChange));
+
+      chips.slice(0,3).forEach(c => meta.appendChild(c));
+
+      inner.appendChild(top);
+      inner.appendChild(meta);
+
+      const eb = document.createElement("div");
+      eb.className = "energyBar";
+      const ef = document.createElement("div");
+      ef.className = "energyFill";
+      ef.style.width = `${clamp(s.energy,0,10)*10}%`;
+      eb.appendChild(ef);
+
+      const handle = document.createElement("div");
+      handle.className = "resizeHandle";
+      handle.title = "Drag to resize (bars)";
+
+      handle.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        handle.setPointerCapture(e.pointerId);
+        resizing = { id: s.id, startX: e.clientX, startBars: s.bars };
+      });
+
+      block.addEventListener("click", () => { selectedId = s.id; render(); });
+
+      block.appendChild(inner);
+      block.appendChild(eb);
+      block.appendChild(handle);
+      blocks.appendChild(block);
+    });
+
+    // Mini map
+    miniMap.innerHTML = "";
+    project.sections.forEach((s) => {
+      const seg = document.createElement("div");
+      seg.className = "miniSeg";
+      seg.style.background = sectionTypeColor(s.type);
+      seg.title = s.name;
+      miniMap.appendChild(seg);
+    });
+
+    // Inspector
+    const sel = getSelected();
+    $("selectedLabel").textContent = sel ? sel.name : "—";
+    if (sel){
+      $("secName").value = sel.name;
+      $("secType").value = sel.type;
+      $("secBars").value = sel.bars;
+      $("secEnergy").value = sel.energy;
+      $("secKey").value = sel.key;
+      $("secKeyChange").value = sel.keyChange;
+      $("secGenres").value = (sel.genres || []).join(", ");
+      $("secHook").value = sel.hook;
+      $("secTransition").value = sel.transition;
+      $("secNotes").value = sel.notes;
+      $("secRef").value = sel.ref;
+      $("secLyric").value = sel.lyric;
+    }
+
+    // Mode toggle
+    const barsBtn = $("modeBarsBtn");
+    const timeBtn = $("modeTimeBtn");
+    barsBtn.classList.toggle("active", project.song.widthMode === "bars");
+    timeBtn.classList.toggle("active", project.song.widthMode === "time");
+
+    drawEnergyArc();
+    save();
+  }
+
+  function pill(label, value){
+    const el = document.createElement("div");
+    el.className = "pill";
+    el.innerHTML = `${label}: <strong>${value}</strong>`;
+    return el;
+  }
+
+  function chip(text){
+    const el = document.createElement("span");
+    el.className = "chip";
+    el.textContent = text;
+    return el;
+  }
+
+  function hexToRgba(hex, a){
+    const h = (hex || "#888").replace("#", "");
+    const full = h.length === 3 ? h.split("").map(c=>c+c).join("") : h;
+    const n = parseInt(full, 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function drawEnergyArc(){
+    const ctx = arcCanvas.getContext("2d");
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const w = arcCanvas.clientWidth || arcCanvas.width;
+    const h = arcCanvas.clientHeight || arcCanvas.height;
+
+    // Resize for crisp
+    arcCanvas.width = Math.round(w * dpr);
+    arcCanvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    // Clear
+    ctx.clearRect(0,0,w,h);
+
+    // Grid
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = 1;
+    for (let i=0;i<=10;i+=2){
+      const y = map(i, 0, 10, h-12, 12);
+      ctx.beginPath();
+      ctx.moveTo(12,y);
+      ctx.lineTo(w-12,y);
+      ctx.strokeStyle = "rgba(255,255,255,.18)";
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    const energies = project.sections.map(s => clamp(Number(s.energy||0),0,10));
+    const n = energies.length;
+    if (n === 0) return;
+
+    // Line
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,.55)";
+    ctx.beginPath();
+
+    energies.forEach((e, i) => {
+      const x = map(i, 0, n-1, 16, w-16);
+      const y = map(e, 0, 10, h-14, 14);
+      if (i === 0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // Points
+    energies.forEach((e, i) => {
+      const x = map(i, 0, n-1, 16, w-16);
+      const y = map(e, 0, 10, h-14, 14);
+      ctx.beginPath();
+      ctx.arc(x,y,3.2,0,Math.PI*2);
+      ctx.fillStyle = "rgba(122,108,255,.9)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,.35)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+
+    // Labels (start / end)
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    ctx.font = "11px ui-sans-serif, system-ui";
+    ctx.fillText("Start", 16, h-2);
+    ctx.fillText("End", w-40, h-2);
+  }
+
+  function map(v, inA, inB, outA, outB){
+    if (inB - inA === 0) return outA;
+    const t = (v - inA) / (inB - inA);
+    return outA + t * (outB - outA);
+  }
+
+  // -----------------------------
+  // Mutations
+  // -----------------------------
+  function addSection(){
+    const s = {
+      id: uid(),
+      name: "New Section",
+      type: "Custom",
+      bars: 8,
+      energy: 5,
+      key: "",
+      keyChange: "",
+      genres: [],
+      hook: "",
+      transition: "",
+      notes: "",
+      ref: "",
+      lyric: "",
+    };
+    const idx = project.sections.findIndex(x => x.id === selectedId);
+    const insertAt = idx >= 0 ? idx + 1 : project.sections.length;
+    project.sections.splice(insertAt, 0, s);
+    selectedId = s.id;
+    toast("Section added");
+    render();
+  }
+
+  function deleteSelected(){
+    const idx = project.sections.findIndex(s => s.id === selectedId);
+    if (idx < 0) return;
+    project.sections.splice(idx,1);
+    selectedId = project.sections[Math.max(0, idx-1)]?.id || project.sections[0]?.id || null;
+    toast("Section deleted");
+    render();
+  }
+
+  function duplicateSelected(){
+    const sel = getSelected();
+    if (!sel) return;
+    const copy = structuredClone(sel);
+    copy.id = uid();
+    copy.name = sel.name + " (copy)";
+    const idx = project.sections.findIndex(s => s.id === sel.id);
+    project.sections.splice(idx+1, 0, copy);
+    selectedId = copy.id;
+    toast("Duplicated");
+    render();
+  }
+
+  function reorder(fromId, toId){
+    const from = project.sections.findIndex(s => s.id === fromId);
+    const to = project.sections.findIndex(s => s.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    const [item] = project.sections.splice(from, 1);
+    project.sections.splice(to, 0, item);
+    toast("Reordered");
+    render();
+  }
+
+  // -----------------------------
+  // Inspector bindings
+  // -----------------------------
+  function bindInspector(){
+    const bind = (id, fn) => $(id).addEventListener("input", fn);
+
+    bind("secName", () => updateSelected(s => s.name = $("secName").value));
+    $("secType").addEventListener("change", () => updateSelected(s => s.type = $("secType").value));
+    bind("secBars", () => updateSelected(s => s.bars = clamp(Number($("secBars").value||1), 1, 256)));
+    bind("secEnergy", () => updateSelected(s => s.energy = clamp(Number($("secEnergy").value||0), 0, 10)));
+    bind("secKey", () => updateSelected(s => s.key = $("secKey").value));
+    bind("secKeyChange", () => updateSelected(s => s.keyChange = $("secKeyChange").value));
+    bind("secGenres", () => updateSelected(s => s.genres = parseTags($("secGenres").value)));
+    bind("secHook", () => updateSelected(s => s.hook = $("secHook").value));
+    bind("secTransition", () => updateSelected(s => s.transition = $("secTransition").value));
+    bind("secNotes", () => updateSelected(s => s.notes = $("secNotes").value));
+    bind("secRef", () => updateSelected(s => s.ref = $("secRef").value));
+    bind("secLyric", () => updateSelected(s => s.lyric = $("secLyric").value));
+
+    // Song meta
+    $("songTitleInput").addEventListener("input", () => { project.song.title = $("songTitleInput").value.slice(0,80) || "Untitled"; render(); });
+    $("artistInput").addEventListener("input", () => { project.song.artist = $("artistInput").value.slice(0,80); render(); });
+    $("bpmInput").addEventListener("input", () => { project.song.bpm = clamp(Number($("bpmInput").value||92), 40, 240); render(); });
+    $("timeSigInput").addEventListener("change", () => { project.song.timeSig = $("timeSigInput").value; render(); });
+    $("songKeyInput").addEventListener("input", () => { project.song.key = $("songKeyInput").value.slice(0,40); render(); });
+    $("songGenreInput").addEventListener("input", () => { project.song.genre = $("songGenreInput").value.slice(0,50); render(); });
+
+    // Mode toggles
+    $("modeBarsBtn").addEventListener("click", () => { project.song.widthMode = "bars"; render(); });
+    $("modeTimeBtn").addEventListener("click", () => { project.song.widthMode = "time"; render(); });
+  }
+
+  function updateSelected(mut){
+    const s = getSelected();
+    if (!s) return;
+    mut(s);
+    render();
+  }
+
+  // -----------------------------
+  // Export
+  // -----------------------------
+  function exportJSON(){
+    const blob = new Blob([JSON.stringify(project, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${safeName(project.song.title || "song")}_structure.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("Exported JSON");
+  }
+
+  function safeName(s){
+    return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40) || "song";
+  }
+
+  function copyShareLink(){
+    const json = JSON.stringify(project);
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    const url = `${location.origin}${location.pathname}#sss=${b64}`;
+    navigator.clipboard?.writeText(url)
+      .then(()=>toast("Share link copied"))
+      .catch(()=>toast("Could not copy (browser blocked clipboard)"));
+  }
+
+  function exportPNG(){
+    // Build an SVG snapshot (simple + reliable for export)
+    const w = 1400;
+    const h = 360;
+    const pad = 60;
+
+    const tb = totalBars();
+    const denomSecondsPerBar = estimateSecondsFromBars(1, project.song.bpm, project.song.timeSig);
+    const mode = project.song.widthMode;
+    const totalForWidth = Math.max(1, (mode === "time")
+      ? project.sections.reduce((a,s)=>a + s.bars*denomSecondsPerBar, 0)
+      : tb
+    );
+
+    const title = escapeXml(project.song.title || "Untitled");
+    const sub = escapeXml([
+      project.song.artist ? `by ${project.song.artist}` : "",
+      `${project.song.bpm} BPM`,
+      project.song.timeSig,
+      project.song.key ? `Start key: ${project.song.key}` : "",
+      project.song.genre ? `Genre: ${project.song.genre}` : "",
+      `Total: ${tb} bars (~${fmtTime(totalSeconds())})`
+    ].filter(Boolean).join(" • "));
+
+    const blocksY = 160;
+    const blocksH = 72;
+
+    let x = pad;
+    const usableW = w - pad*2;
+
+    const rects = project.sections.map((s, idx) => {
+      const seg = (mode === "time")
+        ? (s.bars*denomSecondsPerBar) / totalForWidth
+        : s.bars / totalForWidth;
+      const rw = Math.max(48, seg * usableW);
+
+      const base = sectionTypeColor(s.type);
+      const name = escapeXml(s.name);
+      const meta = escapeXml(`${s.type} • ${s.bars} bars • energy ${s.energy}` + (s.key ? ` • key ${s.key}` : ""));
+
+      const kc = isKeyChange(idx);
+      const badge = kc ? "⚡" : sectionTypeIcon(s.type);
+
+      const energyW = (clamp(s.energy,0,10)/10) * rw;
+
+      const g = `
+        <g>
+          <defs>
+            <linearGradient id="g${idx}" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="${hexToRgba(base,.92)}"/>
+              <stop offset="100%" stop-color="${hexToRgba(base,.32)}"/>
+            </linearGradient>
+          </defs>
+          <rect x="${x}" y="${blocksY}" width="${rw}" height="${blocksH}" rx="16" fill="url(#g${idx})" stroke="rgba(255,255,255,.22)"/>
+          <text x="${x+14}" y="${blocksY+28}" fill="rgba(255,255,255,.95)" font-size="16" font-weight="700">${name}</text>
+          <text x="${x+14}" y="${blocksY+50}" fill="rgba(255,255,255,.70)" font-size="12">${meta}</text>
+          <text x="${x+rw-22}" y="${blocksY+26}" fill="rgba(255,255,255,.95)" font-size="16">${escapeXml(badge)}</text>
+          <rect x="${x}" y="${blocksY+blocksH-10}" width="${energyW}" height="10" rx="0" fill="rgba(34,211,238,.55)"/>
+          <rect x="${x+energyW}" y="${blocksY+blocksH-10}" width="${Math.max(0,rw-energyW)}" height="10" rx="0" fill="rgba(0,0,0,.18)"/>
+        </g>
+      `;
+
+      x += rw + 10;
+      return g;
+    }).join("\n");
+
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+        <defs>
+          <radialGradient id="bgA" cx="0.15" cy="0.20" r="0.9">
+            <stop offset="0%" stop-color="rgba(122,108,255,.20)"/>
+            <stop offset="60%" stop-color="rgba(0,0,0,0)"/>
+          </radialGradient>
+          <radialGradient id="bgB" cx="0.85" cy="0.30" r="0.9">
+            <stop offset="0%" stop-color="rgba(34,211,238,.16)"/>
+            <stop offset="60%" stop-color="rgba(0,0,0,0)"/>
+          </radialGradient>
+        </defs>
+
+        <rect width="100%" height="100%" fill="#070a18"/>
+        <rect width="100%" height="100%" fill="url(#bgA)"/>
+        <rect width="100%" height="100%" fill="url(#bgB)"/>
+
+        <text x="${pad}" y="70" fill="rgba(255,255,255,.96)" font-size="28" font-weight="800">${title}</text>
+        <text x="${pad}" y="98" fill="rgba(255,255,255,.70)" font-size="14">${sub}</text>
+
+        <text x="${pad}" y="142" fill="rgba(255,255,255,.55)" font-size="12">Timeline (${mode === "time" ? "time-based widths" : "bar-based widths"})</text>
+
+        ${rects}
+
+        <text x="${pad}" y="320" fill="rgba(255,255,255,.55)" font-size="12">Exported from Song Structure Studio</text>
+      </svg>
+    `.trim();
+
+    const img = new Image();
+    const svgBlob = new Blob([svg], {type:"image/svg+xml;charset=utf-8"});
+    const url = URL.createObjectURL(svgBlob);
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob((blob) => {
+        if (!blob) return toast("PNG export failed");
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${safeName(project.song.title || "song")}_timeline.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast("Exported PNG");
+      }, "image/png");
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      toast("PNG export failed (image load error)");
+    };
+
+    img.src = url;
+  }
+
+  function escapeXml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&apos;");
+  }
+
+  function printSheet(){
+    const sel = getSelected();
+    const rows = project.sections.map((s, i) => {
+      const tags = (s.genres||[]).join(", ");
+      return `
+        <tr>
+          <td>${i+1}</td>
+          <td><b>${escapeXml(s.name)}</b><div class="muted">${escapeXml(s.type)}</div></td>
+          <td>${s.bars}</td>
+          <td>${s.energy}</td>
+          <td>${escapeXml(s.key || "—")}</td>
+          <td class="muted">${escapeXml(tags || "—")}</td>
+          <td class="muted">${escapeXml(s.transition || "—")}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const html = `
+      <!doctype html>
+      <html><head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>${escapeXml(project.song.title || "Song")} — Producer Sheet</title>
+        <style>
+          body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding:24px; color:#111;}
+          h1{margin:0 0 6px; font-size:22px;}
+          .meta{color:#444; font-size:12px; margin-bottom:16px;}
+          .muted{color:#666; font-size:11px;}
+          table{width:100%; border-collapse:collapse; margin-top:10px;}
+          th,td{border:1px solid #ddd; padding:8px; font-size:12px; vertical-align:top;}
+          th{background:#f6f6f6; text-align:left;}
+          .notes{margin-top:16px;}
+          .notes h2{font-size:14px; margin:0 0 8px;}
+          .box{border:1px solid #ddd; padding:10px; border-radius:10px;}
+        </style>
+      </head><body>
+        <h1>${escapeXml(project.song.title || "Untitled")}</h1>
+        <div class="meta">
+          ${escapeXml(project.song.artist ? `Artist: ${project.song.artist} • ` : "")}
+          BPM: ${project.song.bpm} • Time: ${escapeXml(project.song.timeSig)}
+          ${escapeXml(project.song.key ? ` • Start key: ${project.song.key}` : "")}
+          ${escapeXml(project.song.genre ? ` • Genre: ${project.song.genre}` : "")}
+          • Total: ${totalBars()} bars (~${fmtTime(totalSeconds())})
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Section</th>
+              <th>Bars</th>
+              <th>Energy</th>
+              <th>Key</th>
+              <th>Genre/Vibe</th>
+              <th>Transition</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+
+        <div class="notes">
+          <h2>Notes (selected section)</h2>
+          <div class="box">${escapeXml(sel?.notes || "Select a section in the main app to print its detailed notes here.")}</div>
+        </div>
+
+        <script>window.print();</script>
+      </body></html>
+    `;
+
+    const win = window.open("", "_blank");
+    if (!win) return toast("Popup blocked: allow popups to print");
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  }
+
+  // -----------------------------
+  // Resize via pointer
+  // -----------------------------
+  function onPointerMove(e){
+    if (!resizing) return;
+    const s = project.sections.find(x => x.id === resizing.id);
+    if (!s) return;
+
+    // Convert pixels to bars using the timeline width
+    const timeline = $("timeline");
+    const rect = timeline.getBoundingClientRect();
+    const usable = Math.max(240, rect.width - 40); // approx (inset padding)
+
+    const dx = e.clientX - resizing.startX;
+
+    // total width corresponds to total bars (even if time-mode, resize is still bars)
+    const tb = totalBars();
+    const barsPerPx = tb / usable;
+
+    const deltaBars = Math.round(dx * barsPerPx);
+    s.bars = clamp(resizing.startBars + deltaBars, 1, 256);
+    render();
+  }
+
+  function onPointerUp(){
+    if (resizing){
+      resizing = null;
+      toast("Resized");
+    }
+  }
+
+  // -----------------------------
+  // Shortcuts + actions
+  // -----------------------------
+  function bindActions(){
+    $("addSectionBtn").addEventListener("click", addSection);
+    $("deleteBtn").addEventListener("click", deleteSelected);
+    $("duplicateBtn").addEventListener("click", duplicateSelected);
+    $("exportJsonBtn").addEventListener("click", exportJSON);
+    $("exportPngBtn").addEventListener("click", exportPNG);
+    $("printBtn").addEventListener("click", printSheet);
+    $("copyLinkBtn").addEventListener("click", copyShareLink);
+
+    $("resetBtn").addEventListener("click", () => {
+      project = defaultProject();
+      selectedId = project.sections[0]?.id || null;
+      location.hash = "";
+      toast("Reset to demo");
+      render();
+    });
+
+    $("helpBtn").addEventListener("click", () => {
+      alert(
+        "Song Structure Studio — shortcuts\n\n" +
+        "A: Add section\n" +
+        "Delete: Delete selected\n" +
+        "Ctrl/⌘ + S: Export JSON\n" +
+        "Ctrl/⌘ + P: Print producer sheet\n\n" +
+        "Tips:\n" +
+        "• Drag sections on the left to reorder\n" +
+        "• Drag the small handle on the right side of a timeline block to resize bars\n" +
+        "• Fill section key to show key-change ⚡ when it differs from previous"
+      );
+    });
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+
+    window.addEventListener("keydown", (e) => {
+      const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+
+      if (!e.repeat && (e.key === "a" || e.key === "A") && !mod && !isTypingTarget(e.target)){
+        e.preventDefault();
+        addSection();
+      }
+      if (e.key === "Delete" && !isTypingTarget(e.target)){
+        e.preventDefault();
+        deleteSelected();
+      }
+      if (mod && (e.key === "s" || e.key === "S")){
+        e.preventDefault();
+        exportJSON();
+      }
+      if (mod && (e.key === "p" || e.key === "P")){
+        e.preventDefault();
+        printSheet();
+      }
+    });
+
+    window.addEventListener("resize", () => drawEnergyArc());
+  }
+
+  function isTypingTarget(el){
+    const t = el?.tagName?.toLowerCase();
+    return t === "input" || t === "textarea" || t === "select";
+  }
+
+  // -----------------------------
+  // Init
+  // -----------------------------
+  bindInspector();
+  bindActions();
+  render();
+</script>
+</body>
+</html>
